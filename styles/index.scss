@@ -1,0 +1,186 @@
+@import url('https://fonts.googleapis.com/css?family=Fredoka+One|Monoton|Poiret+One|Raleway+Dots|Syncopate');
+
+* {
+    margin: 0%;
+    padding: 0;
+}
+
+// random color alg
+$frameColor: aqua;
+$frameColorAfter: aqua !default;
+
+// frame skill positions
+$skill_x_pos: (-251.2, -243.5);
+
+.myname {
+    color: #e1e5e6;
+    font-family: 'Fredoka One', 'cursive';
+    font-variant: all-small-caps;
+    position: relative;
+    z-index: 2000;
+    cursor: pointer;
+    top: -28px;
+}
+
+#frame {
+    border-top: 1px dashed $frameColor;
+    width: 342px;
+    padding: 8em 0em;
+    overflow: hidden;
+    // animation: frameGradient 2000ms ease-in-out infinite;
+}
+
+#frame > i.beam {
+    display: block;
+    content: ' ';
+    border: 6px solid #8ebce4;
+    position: relative;
+    left: 170.8px;
+    top: -54px;
+    height: 16px;
+    width: 0;
+    border-radius: 10px;
+    opacity: 0.1;
+    // transform: translateY(-145px);
+}
+
+#frame::after {
+    border-top: 12px solid transparent;
+    content: ' ';
+    position: relative;
+    padding: 11.5em 10.3em;
+    width: inherit;
+    border-bottom: 6px solid $frameColorAfter;
+    left: 0px;
+    top: -94px;
+    transition-duration: 250ms;
+    transition-timing-function: cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    border-right: 6px solid $frameColorAfter;
+    border-left: 6px solid $frameColorAfter;
+    opacity: 0.5;
+
+    // animation: randomFrameColor 500ms infinite;
+}
+
+.mynameActive {
+    animation: frameGradient 100ms ease-in-out infinite;
+}
+
+@keyframes randomFrameColor {
+    from {
+        border-bottom: 12px solid aqua;
+        border-right: 12px solid aqua;
+        border-left: 12px solid aqua;
+    }
+    to {
+        border-bottom: 12px solid red;
+        border-right: 12px solid red;
+        border-left: 12px solid red;
+    }
+}
+
+@keyframes frameGradient {
+    0% {
+        border-color: aqua;
+        transform: translate(0px, 0px);
+    }
+    25% {
+        opacity: 0.2;
+        border-color: white;
+        transform: translate(0px, -208px) scaleY(4);
+    }
+    26% {
+        opacity: 0.1;
+        border-color: white;
+        border-radius: 0;
+        transform: translate(0px, -208px) scaleY(1);
+    }
+    74% {
+        opacity: 0.1;
+        border-radius: 50%;
+        border-color: white;
+        transform: translate(-342px, -208px) scale(45, 1);
+    }
+    75% {
+        opacity: 0.2;
+        border-radius: 50%;
+        border-color: white;
+        transform: translate(-342px, -208px) scale(1, 4);
+    }
+    100% {
+        opacity: 0.1;
+        border-color: red;
+        transform: translate(-342px, 0px) scale(1, 1);
+        // $frameColorAfter: red;
+    }
+}
+
+// hero_circle
+#hero_circle {
+    /*border: 2px solid; */
+    width: 5em;
+    max-width: 5em;
+    max-height: 5em;
+    // padding: 0.5em 2em;
+    border-radius: 7%;
+    top: -33.6em;
+    transform: rotateZ(135deg);
+    /* height: 2vh; */
+    background-image: linear-gradient(to top right, #66ffcc 0%, #003366 100%);
+    left: 0.5em;
+    position: relative;
+    /* height: fit-content; */
+    transition-timing-function: ease-in-out;
+    transition-delay: 800ms;
+    transition-duration: 500ms;
+    overflow: hidden;
+
+    .hero_separator {
+        display: block;
+        position: absolute;
+        background: aliceblue;
+        border: 2px solid transparent;
+        padding: 34px;
+        top: 4px;
+        left: 4px;
+        border-radius: 7%;
+    }
+
+    .hero_circle_img {
+        background-image: url('/static/images/hero-image.png');
+        padding: 2.5em 2.5em;
+        border-radius: 100%;
+        background-color: #a7222200;
+        background-position-x: -3148px;
+        background-position-y: 13px;
+        transform: rotateZ(-135deg);
+        position: relative;
+        left: 0;
+        background-size: 200em;
+        background-repeat: no-repeat;
+        transition-timing-function: ease-in-out;
+        transition-delay: 800ms;
+        transition-duration: 500ms;
+        /* width: inherit; */
+    }
+}
+
+#frame_container {
+    width: fit-content;
+    max-height: 30em;
+    // max-height: 62vh;
+    padding-top: 10em;
+    // max-width: 48vh;
+}
+
+.detailHero {
+    padding: 0px 34px;
+    word-break: break-word;
+}
+// hero_circle
+
+@media screen and (max-width: 600px) {
+    div.example {
+        display: none;
+    }
+}

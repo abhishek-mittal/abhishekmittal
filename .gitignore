@@ -1,0 +1,10 @@
+# Build files
+build/
+.next/
+
+# Node modules
+node_modules/
+
+# WebStorm files
+.idea/
+.DS_Store

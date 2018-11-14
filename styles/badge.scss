@@ -1,0 +1,15 @@
+a {
+    color: inherit;
+    margin: 8px;
+}
+
+.badge {
+    animation: all ease-in 200ms;
+}
+
+.fa:hover {
+    transform: translateY(-5px) scale(1.2);
+    background: linear-gradient(to right, #30cfd0 0%, #330867 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
