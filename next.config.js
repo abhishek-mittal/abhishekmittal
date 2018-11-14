@@ -3,8 +3,8 @@ const withSass = require('@zeit/next-sass');
 const debug = process.env.NODE_ENV !== "production";
 
 module.exports = withSass({
-    assetPrefix:  !debug ? 'https://abhishek-mittal.github.io/abhishekmittal/' : '',
-    exportPathMap: () => ({ '/': { page: '/' } }),
+    assetPrefix:  !debug ? 'https://abhishekmittal.js.org/' : '',
+    // exportPathMap: () => ({ '/': { page: '/' } }),
     cssModules: true,
     cssLoaderOptions: {
         importLoaders: 1,
