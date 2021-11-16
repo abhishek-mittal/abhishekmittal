@@ -21,7 +21,7 @@
     "license": "ISC",
     "dependencies": {
         "@zeit/next-sass": "1.0.1",
-        "aws-sdk": "2.338.0",
+        "aws-sdk": "2.814.0",
         "babel-plugin-styled-components": "1.8.0",
         "cluster": "0.7.7",
         "docker": "1.0.0",
