@@ -51,3 +51,23 @@
     }
     
 }
+
+
+ /* Style for the print button */
+ .print-button {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background-color: #007bff;
+    color: white;
+    border: none;
+    padding: 10px 15px;
+    font-size: 14px;
+    border-radius: 5px;
+    cursor: pointer;
+    box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+  }
+
+  .print-button:hover {
+    background-color: #0056b3;
+  }
