@@ -250,6 +250,58 @@
             background-color: #f8fafc !important;
             border-radius: 6px !important;
         }
+
+        /* Grammar checking styles */
+        .grammar-error {
+            background-color: #fef2f2 !important;
+            border: 1px solid #fca5a5 !important;
+            position: relative;
+        }
+
+        .grammar-warning {
+            background-color: #fefce8 !important;
+            border: 1px solid #fde047 !important;
+            position: relative;
+        }
+
+        .grammar-suggestion {
+            background-color: #f0f9ff !important;
+            border: 1px solid #93c5fd !important;
+            position: relative;
+        }
+
+        .grammar-underline {
+            text-decoration: underline;
+            text-decoration-color: #ef4444;
+            text-decoration-style: wavy;
+            text-decoration-thickness: 2px;
+        }
+
+        .grammar-tooltip {
+            position: absolute;
+            bottom: 100%;
+            left: 0;
+            background: #1f2937;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            white-space: nowrap;
+            z-index: 1000;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s;
+        }
+
+        .grammar-error:hover .grammar-tooltip,
+        .grammar-warning:hover .grammar-tooltip,
+        .grammar-suggestion:hover .grammar-tooltip {
+            opacity: 1;
+        }
+
+        .grammar-stats {
+            background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
+        }
     </style>
     <!-- <link rel="stylesheet" href="./test.css"> -->
     <link rel="stylesheet" href="https://abhishekmittal.js.org/p/test.css">
@@ -399,72 +451,185 @@
             }
         }
 
+        // Enhanced input with grammar checking
+        function GrammarAwareInput({ value, onChange, placeholder, className = "", ...props }) {
+            const [grammarIssues, setGrammarIssues] = React.useState([]);
+            const [showTooltip, setShowTooltip] = React.useState(false);
+
+            const checkGrammar = React.useCallback((text) => {
+                if (!text || text.length < 3) {
+                    setGrammarIssues([]);
+                    return;
+                }
+
+                const issues = [];
+                
+                // Common spelling mistakes
+                const commonMistakes = {
+                    'recieve': 'receive', 'seperate': 'separate', 'occured': 'occurred',
+                    'managment': 'management', 'responsibilty': 'responsibility', 'experiance': 'experience',
+                    'succesful': 'successful', 'acheivement': 'achievement', 'availible': 'available',
+                    'performace': 'performance', 'developement': 'development', 'independant': 'independent',
+                    'efficent': 'efficient', 'relevent': 'relevant', 'bussiness': 'business'
+                };
+
+                // Check for spelling mistakes
+                Object.entries(commonMistakes).forEach(([mistake, correction]) => {
+                    const regex = new RegExp(`\\b${mistake}\\b`, 'gi');
+                    if (regex.test(text)) {
+                        issues.push({
+                            type: 'error',
+                            message: `Spelling: "${mistake}" should be "${correction}"`,
+                            severity: 'high'
+                        });
+                    }
+                });
+
+                // Check for weak words
+                const weakWords = ['very', 'really', 'quite', 'helped', 'assisted', 'worked on'];
+                weakWords.forEach(word => {
+                    const regex = new RegExp(`\\b${word}\\b`, 'gi');
+                    if (regex.test(text)) {
+                        issues.push({
+                            type: 'suggestion',
+                            message: `Consider replacing "${word}" with stronger language`,
+                            severity: 'low'
+                        });
+                    }
+                });
+
+                // Check for missing action verbs at start
+                if (text.length > 10 && !/^(Achieved|Managed|Led|Developed|Implemented|Increased|Decreased|Improved|Created|Designed|Analyzed|Optimized|Coordinated|Supervised|Executed|Established|Streamlined)/i.test(text)) {
+                    issues.push({
+                        type: 'suggestion',
+                        message: 'Consider starting with a strong action verb',
+                        severity: 'medium'
+                    });
+                }
+
+                setGrammarIssues(issues);
+            }, []);
+
+            React.useEffect(() => {
+                const timer = setTimeout(() => checkGrammar(value), 300);
+                return () => clearTimeout(timer);
+            }, [value, checkGrammar]);
+
+            const getInputClass = () => {
+                let baseClass = className || "flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200";
+                
+                const hasErrors = grammarIssues.some(issue => issue.type === 'error');
+                const hasWarnings = grammarIssues.some(issue => issue.severity === 'medium');
+                const hasSuggestions = grammarIssues.some(issue => issue.type === 'suggestion');
+
+                if (hasErrors) {
+                    baseClass = baseClass.replace('border-gray-300', 'border-red-300 bg-red-50');
+                } else if (hasWarnings) {
+                    baseClass = baseClass.replace('border-gray-300', 'border-yellow-300 bg-yellow-50');
+                } else if (hasSuggestions) {
+                    baseClass = baseClass.replace('border-gray-300', 'border-blue-300 bg-blue-50');
+                }
+
+                return baseClass;
+            };
+
+            return (
+                <div className="relative">
+                    <input
+                        className={getInputClass()}
+                        value={value}
+                        onChange={e => onChange(e.target.value)}
+                        placeholder={placeholder}
+                        onMouseEnter={() => setShowTooltip(true)}
+                        onMouseLeave={() => setShowTooltip(false)}
+                        {...props}
+                    />
+                    {grammarIssues.length > 0 && (
+                        <div className="absolute right-2 top-1/2 transform -translate-y-1/2 flex items-center">
+                            <div className="w-2 h-2 rounded-full bg-orange-400"></div>
+                        </div>
+                    )}
+                    {showTooltip && grammarIssues.length > 0 && (
+                        <div className="absolute bottom-full left-0 mb-2 p-2 bg-gray-800 text-white text-xs rounded-md shadow-lg z-10 max-w-xs">
+                            {grammarIssues.map((issue, idx) => (
+                                <div key={idx} className="mb-1 last:mb-0">
+                                    <span className={`inline-block w-2 h-2 rounded-full mr-2 ${
+                                        issue.type === 'error' ? 'bg-red-400' : 
+                                        issue.severity === 'medium' ? 'bg-yellow-400' : 'bg-blue-400'
+                                    }`}></span>
+                                    {issue.message}
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
         function EditableArrayItems ({ items, onChange, placeholder }) {
-            const [draggedIndex, setDraggedIndex] = React.useState(null);
-            const [dragOverIndex, setDragOverIndex] = React.useState(null);
+            const [draggedIndex, setDraggedIndex] = React.useState(null)
+            const [dragOverIndex, setDragOverIndex] = React.useState(null)
 
             const handleDragStart = (e, index) => {
-                setDraggedIndex(index);
-                e.dataTransfer.effectAllowed = 'move';
-                e.dataTransfer.setData('text/plain', index.toString());
-                e.target.style.opacity = '0.5';
-            };
+                setDraggedIndex(index)
+                e.dataTransfer.effectAllowed = 'move'
+                e.dataTransfer.setData('text/plain', index.toString())
+                e.target.style.opacity = '0.5'
+            }
 
             const handleDragEnd = (e) => {
-                setDraggedIndex(null);
-                setDragOverIndex(null);
-                e.target.style.opacity = '1';
-            };
+                setDraggedIndex(null)
+                setDragOverIndex(null)
+                e.target.style.opacity = '1'
+            }
 
             const handleDragOver = (e) => {
-                e.preventDefault();
-                e.dataTransfer.dropEffect = 'move';
-            };
+                e.preventDefault()
+                e.dataTransfer.dropEffect = 'move'
+            }
 
             const handleDragEnter = (e, index) => {
-                e.preventDefault();
+                e.preventDefault()
                 if (draggedIndex !== null && index !== draggedIndex) {
-                    setDragOverIndex(index);
+                    setDragOverIndex(index)
                 }
-            };
+            }
 
             const handleDragLeave = (e) => {
                 // Only clear if we're leaving the entire item container
                 if (!e.currentTarget.contains(e.relatedTarget)) {
-                    setDragOverIndex(null);
+                    setDragOverIndex(null)
                 }
-            };
+            }
 
             const handleDrop = (e, dropIndex) => {
-                e.preventDefault();
-                setDragOverIndex(null);
-                
-                if (draggedIndex === null || draggedIndex === dropIndex) return;
-                
-                const newItems = [...items];
-                const draggedItem = newItems[draggedIndex];
-                
+                e.preventDefault()
+                setDragOverIndex(null)
+
+                if (draggedIndex === null || draggedIndex === dropIndex) return
+
+                const newItems = [...items]
+                const draggedItem = newItems[draggedIndex]
+
                 // Remove the dragged item
-                newItems.splice(draggedIndex, 1);
-                
+                newItems.splice(draggedIndex, 1)
+
                 // Insert at new position
-                const insertIndex = draggedIndex < dropIndex ? dropIndex - 1 : dropIndex;
-                newItems.splice(insertIndex, 0, draggedItem);
-                
-                onChange(newItems);
-                setDraggedIndex(null);
-            };
+                const insertIndex = draggedIndex < dropIndex ? dropIndex - 1 : dropIndex
+                newItems.splice(insertIndex, 0, draggedItem)
+
+                onChange(newItems)
+                setDraggedIndex(null)
+            }
 
             return (
                 <div className="space-y-2">
                     {items.map((val, idx) => (
-                        <div 
-                            key={idx} 
-                            className={`flex items-center gap-2 p-2 rounded-lg transition-all duration-200 drag-zone ${
-                                draggedIndex === idx ? 'dragging' : ''
-                            } ${
-                                dragOverIndex === idx ? 'drag-over' : ''
-                            }`}
+                        <div
+                            key={idx}
+                            className={`flex items-center gap-2 p-2 rounded-lg transition-all duration-200 drag-zone ${draggedIndex === idx ? 'dragging' : ''
+                                } ${dragOverIndex === idx ? 'drag-over' : ''
+                                }`}
                             draggable
                             onDragStart={(e) => handleDragStart(e, idx)}
                             onDragEnd={handleDragEnd}
@@ -479,12 +644,11 @@
                             <span className="text-xs text-gray-500 font-mono w-6 text-center">
                                 {idx + 1}
                             </span>
-                            <input
-                                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                            <GrammarAwareInput
                                 value={val}
-                                onChange={e => {
+                                onChange={(newValue) => {
                                     const copy = [...items]
-                                    copy[idx] = e.target.value
+                                    copy[idx] = newValue
                                     onChange(copy)
                                 }}
                                 placeholder={placeholder}
@@ -515,10 +679,10 @@
         }
 
         function EditableSkills ({ skills, setSkills }) {
-            const [draggedIndex, setDraggedIndex] = React.useState(null);
-            const [dragOverIndex, setDragOverIndex] = React.useState(null);
+            const [draggedIndex, setDraggedIndex] = React.useState(null)
+            const [dragOverIndex, setDragOverIndex] = React.useState(null)
 
-            const skillsArray = Object.entries(skills);
+            const skillsArray = Object.entries(skills)
 
             const addSkillCategory = () => {
                 const newCategory = `New Skill Category ${Object.keys(skills).length + 1}`
@@ -543,72 +707,70 @@
             }
 
             const handleDragStart = (e, index) => {
-                setDraggedIndex(index);
-                e.dataTransfer.effectAllowed = 'move';
-                e.dataTransfer.setData('text/plain', index.toString());
-                e.target.style.opacity = '0.5';
-            };
+                setDraggedIndex(index)
+                e.dataTransfer.effectAllowed = 'move'
+                e.dataTransfer.setData('text/plain', index.toString())
+                e.target.style.opacity = '0.5'
+            }
 
             const handleDragEnd = (e) => {
-                setDraggedIndex(null);
-                setDragOverIndex(null);
-                e.target.style.opacity = '1';
-            };
+                setDraggedIndex(null)
+                setDragOverIndex(null)
+                e.target.style.opacity = '1'
+            }
 
             const handleDragOver = (e) => {
-                e.preventDefault();
-                e.dataTransfer.dropEffect = 'move';
-            };
+                e.preventDefault()
+                e.dataTransfer.dropEffect = 'move'
+            }
 
             const handleDragEnter = (e, index) => {
-                e.preventDefault();
+                e.preventDefault()
                 if (draggedIndex !== null && index !== draggedIndex) {
-                    setDragOverIndex(index);
+                    setDragOverIndex(index)
                 }
-            };
+            }
 
             const handleDragLeave = (e) => {
                 if (!e.currentTarget.contains(e.relatedTarget)) {
-                    setDragOverIndex(null);
+                    setDragOverIndex(null)
                 }
-            };
+            }
 
             const handleDrop = (e, dropIndex) => {
-                e.preventDefault();
-                setDragOverIndex(null);
-                
-                if (draggedIndex === null || draggedIndex === dropIndex) return;
-                
-                const newArray = [...skillsArray];
-                const draggedItem = newArray[draggedIndex];
-                
+                e.preventDefault()
+                setDragOverIndex(null)
+
+                if (draggedIndex === null || draggedIndex === dropIndex) return
+
+                const newArray = [...skillsArray]
+                const draggedItem = newArray[draggedIndex]
+
                 // Remove the dragged item
-                newArray.splice(draggedIndex, 1);
-                
+                newArray.splice(draggedIndex, 1)
+
                 // Insert at new position
-                const insertIndex = draggedIndex < dropIndex ? dropIndex - 1 : dropIndex;
-                newArray.splice(insertIndex, 0, draggedItem);
-                
+                const insertIndex = draggedIndex < dropIndex ? dropIndex - 1 : dropIndex
+                newArray.splice(insertIndex, 0, draggedItem)
+
                 // Convert back to object
-                const newSkills = {};
+                const newSkills = {}
                 newArray.forEach(([key, value]) => {
-                    newSkills[key] = value;
-                });
-                
-                setSkills(newSkills);
-                setDraggedIndex(null);
-            };
+                    newSkills[key] = value
+                })
+
+                setSkills(newSkills)
+                setDraggedIndex(null)
+            }
 
             return (
                 <div className="space-y-4">
                     {skillsArray.map(([group, skill], idx) => (
-                        <div 
-                            key={group} 
-                            className={`bg-gray-50 p-4 rounded-lg border transition-all duration-200 drag-zone ${
-                                draggedIndex === idx ? 'dragging' : ''
-                            } ${
-                                dragOverIndex === idx ? 'drag-over' : ''
-                            }`}
+                        <div
+                            key={group}
+                            className={`bg-gray-50 p-4 rounded-lg border transition-all duration-200 drag-zone ${draggedIndex === idx ? 'dragging' : ''
+                                } ${dragOverIndex === idx ? 'drag-over' : ''
+                                }`}
                             draggable
                             onDragStart={(e) => handleDragStart(e, idx)}
                             onDragEnd={handleDragEnd}
@@ -638,10 +800,10 @@
                                     <i className="fas fa-trash text-sm"></i>
                                 </button>
                             </div>
-                            <input
+                            <GrammarAwareInput
                                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
                                 value={skill}
-                                onChange={e => setSkills({ ...skills, [group]: e.target.value })}
+                                onChange={(value) => setSkills({ ...skills, [group]: value })}
                                 placeholder="List your skills in this category"
                             />
                         </div>
@@ -658,10 +820,10 @@
         }
 
         function EditableOther ({ other, setOther }) {
-            const [draggedIndex, setDraggedIndex] = React.useState(null);
-            const [dragOverIndex, setDragOverIndex] = React.useState(null);
+            const [draggedIndex, setDraggedIndex] = React.useState(null)
+            const [dragOverIndex, setDragOverIndex] = React.useState(null)
 
-            const otherArray = Object.entries(other);
+            const otherArray = Object.entries(other)
 
             const addOtherCategory = () => {
                 const newCategory = `New Category ${Object.keys(other).length + 1}`
@@ -686,72 +848,70 @@
             }
 
             const handleDragStart = (e, index) => {
-                setDraggedIndex(index);
-                e.dataTransfer.effectAllowed = 'move';
-                e.dataTransfer.setData('text/plain', index.toString());
-                e.target.style.opacity = '0.5';
-            };
+                setDraggedIndex(index)
+                e.dataTransfer.effectAllowed = 'move'
+                e.dataTransfer.setData('text/plain', index.toString())
+                e.target.style.opacity = '0.5'
+            }
 
             const handleDragEnd = (e) => {
-                setDraggedIndex(null);
-                setDragOverIndex(null);
-                e.target.style.opacity = '1';
-            };
+                setDraggedIndex(null)
+                setDragOverIndex(null)
+                e.target.style.opacity = '1'
+            }
 
             const handleDragOver = (e) => {
-                e.preventDefault();
-                e.dataTransfer.dropEffect = 'move';
-            };
+                e.preventDefault()
+                e.dataTransfer.dropEffect = 'move'
+            }
 
             const handleDragEnter = (e, index) => {
-                e.preventDefault();
+                e.preventDefault()
                 if (draggedIndex !== null && index !== draggedIndex) {
-                    setDragOverIndex(index);
+                    setDragOverIndex(index)
                 }
-            };
+            }
 
             const handleDragLeave = (e) => {
                 if (!e.currentTarget.contains(e.relatedTarget)) {
-                    setDragOverIndex(null);
+                    setDragOverIndex(null)
                 }
-            };
+            }
 
             const handleDrop = (e, dropIndex) => {
-                e.preventDefault();
-                setDragOverIndex(null);
-                
-                if (draggedIndex === null || draggedIndex === dropIndex) return;
-                
-                const newArray = [...otherArray];
-                const draggedItem = newArray[draggedIndex];
-                
+                e.preventDefault()
+                setDragOverIndex(null)
+
+                if (draggedIndex === null || draggedIndex === dropIndex) return
+
+                const newArray = [...otherArray]
+                const draggedItem = newArray[draggedIndex]
+
                 // Remove the dragged item
-                newArray.splice(draggedIndex, 1);
-                
+                newArray.splice(draggedIndex, 1)
+
                 // Insert at new position
-                const insertIndex = draggedIndex < dropIndex ? dropIndex - 1 : dropIndex;
-                newArray.splice(insertIndex, 0, draggedItem);
-                
+                const insertIndex = draggedIndex < dropIndex ? dropIndex - 1 : dropIndex
+                newArray.splice(insertIndex, 0, draggedItem)
+
                 // Convert back to object
-                const newOther = {};
+                const newOther = {}
                 newArray.forEach(([key, value]) => {
-                    newOther[key] = value;
-                });
-                
-                setOther(newOther);
-                setDraggedIndex(null);
-            };
+                    newOther[key] = value
+                })
+
+                setOther(newOther)
+                setDraggedIndex(null)
+            }
 
             return (
                 <div className="space-y-4">
                     {otherArray.map(([cat, val], idx) => (
-                        <div 
-                            key={cat} 
-                            className={`bg-gray-50 p-4 rounded-lg border transition-all duration-200 drag-zone ${
-                                draggedIndex === idx ? 'dragging' : ''
-                            } ${
-                                dragOverIndex === idx ? 'drag-over' : ''
-                            }`}
+                        <div
+                            key={cat}
+                            className={`bg-gray-50 p-4 rounded-lg border transition-all duration-200 drag-zone ${draggedIndex === idx ? 'dragging' : ''
+                                } ${dragOverIndex === idx ? 'drag-over' : ''
+                                }`}
                             draggable
                             onDragStart={(e) => handleDragStart(e, idx)}
                             onDragEnd={handleDragEnd}
@@ -781,10 +941,10 @@
                                     <i className="fas fa-trash text-sm"></i>
                                 </button>
                             </div>
-                            <input
+                            <GrammarAwareInput
                                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
                                 value={val}
-                                onChange={e => setOther({ ...other, [cat]: e.target.value })}
+                                onChange={(value) => setOther({ ...other, [cat]: value })}
                                 placeholder="Describe this category"
                             />
                         </div>
@@ -1022,8 +1182,711 @@
   `).join("")
         }
 
+        function ATSScoreAnalyzer ({ data }) {
+            const calculateATSScore = () => {
+                let score = 0
+                let maxScore = 100
+                const issues = []
+                const suggestions = []
+
+                // 1. Contact Information (15 points)
+                if (data.name && data.name.trim() !== "Your Name") score += 3
+                else issues.push("Missing or default name")
+
+                if (data.email && data.email.includes("@")) score += 3
+                else issues.push("Missing or invalid email")
+
+                if (data.phone && data.phone.trim() && data.phone !== "(123) 456-789") score += 3
+                else issues.push("Missing or default phone number")
+
+                if (data.location && data.location.trim() && data.location !== "City, Country") score += 3
+                else issues.push("Missing or default location")
+
+                if (data.linkedin && data.linkedin.includes("linkedin.com")) score += 3
+                else issues.push("Missing or invalid LinkedIn profile")
+
+                // 2. Experience Section (25 points)
+                const validExperience = data.experience.filter(exp =>
+                    exp.company.trim() && exp.title.trim() && exp.bullets.filter(b => b.trim()).length > 0
+                )
+
+                if (validExperience.length >= 2) score += 10
+                else if (validExperience.length >= 1) score += 5
+                else issues.push("Need at least 2 work experiences with details")
+
+                // Check for quantified achievements
+                const quantifiedBullets = data.experience.flatMap(exp => exp.bullets)
+                    .filter(bullet => /\d+(%|k|million|\$|hours|days|projects|clients|people|teams)/i.test(bullet))
+
+                if (quantifiedBullets.length >= 5) score += 10
+                else if (quantifiedBullets.length >= 3) score += 7
+                else if (quantifiedBullets.length >= 1) score += 3
+                else issues.push("Add numbers/metrics to achievements (%, $, time saved, etc.)")
+
+                // Action verbs check
+                const actionVerbs = ['achieved', 'managed', 'led', 'developed', 'implemented', 'increased', 'decreased', 'improved', 'created', 'designed', 'analyzed', 'optimized']
+                const hasActionVerbs = data.experience.some(exp =>
+                    exp.bullets.some(bullet =>
+                        actionVerbs.some(verb => bullet.toLowerCase().includes(verb))
+                    )
+                )
+
+                if (hasActionVerbs) score += 5
+                else suggestions.push("Use strong action verbs (achieved, managed, led, developed, etc.)")
+
+                // 3. Education Section (10 points)
+                const validEducation = data.education.filter(ed =>
+                    ed.school.trim() && ed.title.trim()
+                )
+
+                if (validEducation.length >= 1) score += 10
+                else issues.push("Add at least one education entry")
+
+                // 4. Skills Section (20 points)
+                const skillCategories = Object.keys(data.skills).length
+                const skillsWithContent = Object.values(data.skills).filter(skill => skill.trim()).length
+
+                if (skillCategories >= 3 && skillsWithContent >= 3) score += 15
+                else if (skillCategories >= 2 && skillsWithContent >= 2) score += 10
+                else if (skillCategories >= 1 && skillsWithContent >= 1) score += 5
+                else issues.push("Add at least 3 skill categories with relevant skills")
+
+                // Tech skills bonus
+                const techKeywords = ['software', 'programming', 'database', 'cloud', 'analytics', 'excel', 'sql', 'python', 'javascript']
+                const hasTechSkills = Object.values(data.skills).some(skill =>
+                    techKeywords.some(keyword => skill.toLowerCase().includes(keyword))
+                )
+
+                if (hasTechSkills) score += 5
+                else suggestions.push("Consider adding technical skills relevant to your field")
+
+                // 5. Additional Information (10 points)
+                const otherCategories = Object.keys(data.other).length
+                const otherWithContent = Object.values(data.other).filter(info => info.trim()).length
+
+                if (otherCategories >= 2 && otherWithContent >= 2) score += 10
+                else if (otherCategories >= 1 && otherWithContent >= 1) score += 5
+                else suggestions.push("Add certifications, awards, or other relevant information")
+
+                // 6. Content Quality (20 points)
+                const totalWords = [
+                    ...data.experience.flatMap(exp => exp.bullets),
+                    ...data.education.flatMap(ed => ed.bullets),
+                    ...Object.values(data.skills),
+                    ...Object.values(data.other)
+                ].join(' ').split(' ').filter(word => word.length > 0).length
+
+                if (totalWords >= 200) score += 10
+                else if (totalWords >= 100) score += 5
+                else issues.push("Add more detailed content (aim for 200+ words total)")
+
+                // Check for buzzwords/keywords
+                const industryKeywords = ['leadership', 'teamwork', 'communication', 'problem-solving', 'analytical', 'strategic', 'innovative', 'efficient']
+                const hasKeywords = data.experience.some(exp =>
+                    exp.bullets.some(bullet =>
+                        industryKeywords.some(keyword => bullet.toLowerCase().includes(keyword))
+                    )
+                )
+
+                if (hasKeywords) score += 5
+                else suggestions.push("Include industry keywords (leadership, analytical, strategic, etc.)")
+
+                // Consistency check
+                const dateFormats = data.experience.map(exp => exp.date).filter(date => date.trim())
+                const hasConsistentDates = dateFormats.length > 0 &&
+                    dateFormats.every(date => /\d{4}/.test(date)) // Basic year format check
+
+                if (hasConsistentDates) score += 5
+                else suggestions.push("Use consistent date formats (e.g., 'January 2020 - Present')")
+
+                return {
+                    score: Math.min(score, maxScore),
+                    maxScore,
+                    percentage: Math.round((Math.min(score, maxScore) / maxScore) * 100),
+                    issues,
+                    suggestions,
+                    grade: score >= 90 ? 'A+' : score >= 80 ? 'A' : score >= 70 ? 'B' : score >= 60 ? 'C' : 'D'
+                }
+            }
+
+            const analysis = calculateATSScore()
+
+            const getScoreColor = (percentage) => {
+                if (percentage >= 90) return 'text-green-600 bg-green-100'
+                if (percentage >= 80) return 'text-blue-600 bg-blue-100'
+                if (percentage >= 70) return 'text-yellow-600 bg-yellow-100'
+                if (percentage >= 60) return 'text-orange-600 bg-orange-100'
+                return 'text-red-600 bg-red-100'
+            }
+
+            const getProgressColor = (percentage) => {
+                if (percentage >= 90) return 'bg-green-500'
+                if (percentage >= 80) return 'bg-blue-500'
+                if (percentage >= 70) return 'bg-yellow-500'
+                if (percentage >= 60) return 'bg-orange-500'
+                return 'bg-red-500'
+            }
+
+            return (
+                <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-200 mb-6">
+                    <div className="flex items-center justify-between mb-4">
+                        <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
+                            <i className="fas fa-chart-line text-indigo-600"></i>
+                            ATS Score Analyzer
+                        </h2>
+                        <div className={`px-4 py-2 rounded-full font-bold text-lg ${getScoreColor(analysis.percentage)}`}>
+                            {analysis.percentage}% ({analysis.grade})
+                        </div>
+                    </div>
+
+                    {/* Progress Bar */}
+                    <div className="mb-6">
+                        <div className="flex justify-between items-center mb-2">
+                            <span className="text-sm font-medium text-gray-700">ATS Compatibility Score</span>
+                            <span className="text-sm text-gray-500">{analysis.score}/{analysis.maxScore} points</span>
+                        </div>
+                        <div className="w-full bg-gray-200 rounded-full h-3">
+                            <div
+                                className={`h-3 rounded-full transition-all duration-500 ${getProgressColor(analysis.percentage)}`}
+                                style={{ width: `${analysis.percentage}%` }}
+                            ></div>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {/* Issues */}
+                        {analysis.issues.length > 0 && (
+                            <div className="bg-red-50 rounded-lg p-4">
+                                <h3 className="font-semibold text-red-800 mb-3 flex items-center gap-2">
+                                    <i className="fas fa-exclamation-triangle"></i>
+                                    Critical Issues ({analysis.issues.length})
+                                </h3>
+                                <ul className="space-y-2">
+                                    {analysis.issues.map((issue, index) => (
+                                        <li key={index} className="text-sm text-red-700 flex items-start gap-2">
+                                            <i className="fas fa-times text-red-500 mt-0.5 text-xs"></i>
+                                            {issue}
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                        )}
+
+                        {/* Suggestions */}
+                        {analysis.suggestions.length > 0 && (
+                            <div className="bg-blue-50 rounded-lg p-4">
+                                <h3 className="font-semibold text-blue-800 mb-3 flex items-center gap-2">
+                                    <i className="fas fa-lightbulb"></i>
+                                    Improvement Tips ({analysis.suggestions.length})
+                                </h3>
+                                <ul className="space-y-2">
+                                    {analysis.suggestions.map((suggestion, index) => (
+                                        <li key={index} className="text-sm text-blue-700 flex items-start gap-2">
+                                            <i className="fas fa-arrow-up text-blue-500 mt-0.5 text-xs"></i>
+                                            {suggestion}
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                        )}
+
+                        {/* Success Message */}
+                        {analysis.issues.length === 0 && analysis.suggestions.length === 0 && (
+                            <div className="bg-green-50 rounded-lg p-4 md:col-span-2">
+                                <h3 className="font-semibold text-green-800 mb-2 flex items-center gap-2">
+                                    <i className="fas fa-check-circle"></i>
+                                    Excellent ATS Optimization!
+                                </h3>
+                                <p className="text-sm text-green-700">
+                                    Your resume is well-optimized for ATS systems. It includes all essential elements with proper formatting and relevant keywords.
+                                </p>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* ATS Tips */}
+                    <div className="mt-6 p-4 bg-gray-50 rounded-lg">
+                        <h4 className="font-semibold text-gray-800 mb-2 flex items-center gap-2">
+                            <i className="fas fa-info-circle text-gray-600"></i>
+                            ATS Optimization Tips
+                        </h4>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-600">
+                            <div>
+                                <strong>Content:</strong> Use keywords from job descriptions, quantify achievements with numbers
+                            </div>
+                            <div>
+                                <strong>Format:</strong> Simple fonts, clear headings, consistent formatting
+                            </div>
+                            <div>
+                                <strong>Sections:</strong> Include all standard sections (Contact, Experience, Education, Skills)
+                            </div>
+                            <div>
+                                <strong>Keywords:</strong> Industry-specific terms, technical skills, soft skills
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )
+        }
+
+        function GrammarChecker({ data }) {
+            const [grammarResults, setGrammarResults] = React.useState({
+                errors: [],
+                warnings: [],
+                suggestions: [],
+                stats: { errors: 0, warnings: 0, suggestions: 0, wordsChecked: 0 }
+            });
+            const [isAnalyzing, setIsAnalyzing] = React.useState(false);
+            const [showDetails, setShowDetails] = React.useState(false);
+
+            // Common grammar rules and patterns
+            const grammarRules = {
+                // Spelling and common mistakes
+                commonMistakes: {
+                    'recieve': 'receive',
+                    'seperate': 'separate',
+                    'occured': 'occurred',
+                    'managment': 'management',
+                    'responsibilty': 'responsibility',
+                    'experiance': 'experience',
+                    'succesful': 'successful',
+                    'acheivement': 'achievement',
+                    'availible': 'available',
+                    'maintainance': 'maintenance',
+                    'performace': 'performance',
+                    'enviroment': 'environment',
+                    'developement': 'development',
+                    'independant': 'independent',
+                    'consistant': 'consistent',
+                    'efficent': 'efficient',
+                    'relevent': 'relevant',
+                    'necesary': 'necessary',
+                    'accomodate': 'accommodate',
+                    'bussiness': 'business'
+                },
+                
+                // Grammar patterns
+                patterns: [
+                    {
+                        pattern: /\b(a)\s+(hour|honest|honor)\b/gi,
+                        message: 'Use "an" before words starting with silent "h"',
+                        type: 'error',
+                        suggestion: (match) => match.replace(/\ba\s+/i, 'an ')
+                    },
+                    {
+                        pattern: /\b(an)\s+([bcdfgjklmnpqrstvwxyz])/gi,
+                        message: 'Use "a" before consonant sounds',
+                        type: 'error',
+                        suggestion: (match) => match.replace(/\ban\s+/i, 'a ')
+                    },
+                    {
+                        pattern: /\b(i)\s+(am|was|will|have|had)\b/gi,
+                        message: 'Capitalize "I" when used as a pronoun',
+                        type: 'error',
+                        suggestion: (match) => match.replace(/\bi\s+/i, 'I ')
+                    },
+                    {
+                        pattern: /\b(there|their|they\'re)\b/gi,
+                        message: 'Check there/their/they\'re usage',
+                        type: 'warning',
+                        suggestion: 'Verify correct usage: there (location), their (possession), they\'re (they are)'
+                    },
+                    {
+                        pattern: /\b(your|you\'re)\b/gi,
+                        message: 'Check your/you\'re usage',
+                        type: 'warning',
+                        suggestion: 'Verify correct usage: your (possession), you\'re (you are)'
+                    },
+                    {
+                        pattern: /\b(its|it\'s)\b/gi,
+                        message: 'Check its/it\'s usage',
+                        type: 'warning',
+                        suggestion: 'Verify correct usage: its (possession), it\'s (it is)'
+                    },
+                    {
+                        pattern: /\s{2,}/g,
+                        message: 'Multiple spaces detected',
+                        type: 'suggestion',
+                        suggestion: (match) => ' '
+                    },
+                    {
+                        pattern: /\b(very|really|extremely|quite)\s+/gi,
+                        message: 'Consider removing weak intensifiers',
+                        type: 'suggestion',
+                        suggestion: 'Replace with stronger, more specific words'
+                    },
+                    {
+                        pattern: /\b(responsible for)\b/gi,
+                        message: 'Consider using stronger action verbs',
+                        type: 'suggestion',
+                        suggestion: 'Use: managed, led, oversaw, directed, coordinated'
+                    },
+                    {
+                        pattern: /\b(helped|assisted)\b/gi,
+                        message: 'Use more specific action verbs',
+                        type: 'suggestion',
+                        suggestion: 'Use: supported, facilitated, contributed to, collaborated on'
+                    },
+                    {
+                        pattern: /\b(worked on|worked with)\b/gi,
+                        message: 'Use more specific action verbs',
+                        type: 'suggestion',
+                        suggestion: 'Use: developed, implemented, collaborated on, executed'
+                    }
+                ],
+
+                // Capitalization rules
+                capitalization: [
+                    {
+                        pattern: /\b(january|february|march|april|may|june|july|august|september|october|november|december)\b/gi,
+                        message: 'Capitalize month names',
+                        type: 'error'
+                    },
+                    {
+                        pattern: /\b(monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/gi,
+                        message: 'Capitalize day names',
+                        type: 'error'
+                    }
+                ],
+
+                // Punctuation rules
+                punctuation: [
+                    {
+                        pattern: /\s+([,.!?;:])/g,
+                        message: 'Remove space before punctuation',
+                        type: 'error',
+                        suggestion: (match) => match.trim()
+                    },
+                    {
+                        pattern: /([,.!?;:])\w/g,
+                        message: 'Add space after punctuation',
+                        type: 'error',
+                        suggestion: (match) => match.charAt(0) + ' ' + match.charAt(1)
+                    }
+                ]
+            };
+
+            const analyzeGrammar = React.useCallback(() => {
+                setIsAnalyzing(true);
+                
+                const errors = [];
+                const warnings = [];
+                const suggestions = [];
+                let wordsChecked = 0;
+
+                // Collect all text content
+                const textSources = [
+                    ...data.experience.flatMap(exp => [exp.company, exp.title, ...exp.bullets]),
+                    ...data.education.flatMap(ed => [ed.school, ed.title, ...ed.bullets]),
+                    ...Object.values(data.skills),
+                    ...Object.values(data.other),
+                    data.name,
+                    data.jobTitle,
+                    data.location,
+                    data.email,
+                    data.linkedin
+                ];
+
+                textSources.forEach((text, sourceIndex) => {
+                    if (!text || typeof text !== 'string') return;
+                    
+                    const words = text.toLowerCase().split(/\s+/).filter(word => word.length > 0);
+                    wordsChecked += words.length;
+
+                    // Check common spelling mistakes
+                    Object.entries(grammarRules.commonMistakes).forEach(([mistake, correction]) => {
+                        const regex = new RegExp(`\\b${mistake}\\b`, 'gi');
+                        const matches = text.match(regex);
+                        if (matches) {
+                            matches.forEach(match => {
+                                errors.push({
+                                    text: match,
+                                    message: `Spelling error: "${match}" should be "${correction}"`,
+                                    suggestion: correction,
+                                    sourceIndex,
+                                    type: 'spelling'
+                                });
+                            });
+                        }
+                    });
+
+                    // Check grammar patterns
+                    grammarRules.patterns.forEach(rule => {
+                        const matches = text.match(rule.pattern);
+                        if (matches) {
+                            matches.forEach(match => {
+                                const result = {
+                                    text: match,
+                                    message: rule.message,
+                                    suggestion: typeof rule.suggestion === 'function' ? rule.suggestion(match) : rule.suggestion,
+                                    sourceIndex,
+                                    type: rule.type
+                                };
+
+                                if (rule.type === 'error') errors.push(result);
+                                else if (rule.type === 'warning') warnings.push(result);
+                                else suggestions.push(result);
+                            });
+                        }
+                    });
+
+                    // Check capitalization
+                    grammarRules.capitalization.forEach(rule => {
+                        const matches = text.match(rule.pattern);
+                        if (matches) {
+                            matches.forEach(match => {
+                                errors.push({
+                                    text: match,
+                                    message: rule.message,
+                                    suggestion: match.charAt(0).toUpperCase() + match.slice(1).toLowerCase(),
+                                    sourceIndex,
+                                    type: 'capitalization'
+                                });
+                            });
+                        }
+                    });
+
+                    // Check punctuation
+                    grammarRules.punctuation.forEach(rule => {
+                        const matches = text.match(rule.pattern);
+                        if (matches) {
+                            matches.forEach(match => {
+                                errors.push({
+                                    text: match,
+                                    message: rule.message,
+                                    suggestion: typeof rule.suggestion === 'function' ? rule.suggestion(match) : rule.suggestion,
+                                    sourceIndex,
+                                    type: 'punctuation'
+                                });
+                            });
+                        }
+                    });
+                });
+
+                setGrammarResults({
+                    errors: errors.slice(0, 20), // Limit to prevent overwhelming
+                    warnings: warnings.slice(0, 15),
+                    suggestions: suggestions.slice(0, 10),
+                    stats: {
+                        errors: errors.length,
+                        warnings: warnings.length,
+                        suggestions: suggestions.length,
+                        wordsChecked
+                    }
+                });
+
+                setIsAnalyzing(false);
+            }, [data]);
+
+            // Auto-analyze when data changes
+            React.useEffect(() => {
+                const timer = setTimeout(() => {
+                    analyzeGrammar();
+                }, 500); // Debounce
+
+                return () => clearTimeout(timer);
+            }, [analyzeGrammar]);
+
+            const getGrammarScore = () => {
+                const { errors, warnings, wordsChecked } = grammarResults.stats;
+                if (wordsChecked === 0) return 100;
+                
+                const errorWeight = 5;
+                const warningWeight = 2;
+                const totalDeductions = (errors * errorWeight) + (warnings * warningWeight);
+                const score = Math.max(0, 100 - Math.min(totalDeductions, 100));
+                
+                return Math.round(score);
+            };
+
+            const getScoreColor = (score) => {
+                if (score >= 90) return 'text-green-600 bg-green-100';
+                if (score >= 80) return 'text-blue-600 bg-blue-100';
+                if (score >= 70) return 'text-yellow-600 bg-yellow-100';
+                if (score >= 60) return 'text-orange-600 bg-orange-100';
+                return 'text-red-600 bg-red-100';
+            };
+
+            const getProgressColor = (score) => {
+                if (score >= 90) return 'bg-green-500';
+                if (score >= 80) return 'bg-blue-500';
+                if (score >= 70) return 'bg-yellow-500';
+                if (score >= 60) return 'bg-orange-500';
+                return 'bg-red-500';
+            };
+
+            const grammarScore = getGrammarScore();
+
+            return (
+                <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-200 mb-6">
+                    <div className="flex items-center justify-between mb-4">
+                        <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
+                            <i className="fas fa-spell-check text-purple-600"></i>
+                            Grammar & Writing Checker
+                        </h2>
+                        <div className="flex items-center gap-3">
+                            <button
+                                onClick={() => setShowDetails(!showDetails)}
+                                className="px-3 py-1 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                                title="Toggle Details"
+                            >
+                                <i className={`fas fa-chevron-${showDetails ? 'up' : 'down'}`}></i>
+                            </button>
+                            <div className={`px-4 py-2 rounded-full font-bold text-lg ${getScoreColor(grammarScore)}`}>
+                                {isAnalyzing ? (
+                                    <i className="fas fa-spinner fa-spin"></i>
+                                ) : (
+                                    `${grammarScore}%`
+                                )}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Progress Bar */}
+                    <div className="mb-6">
+                        <div className="flex justify-between items-center mb-2">
+                            <span className="text-sm font-medium text-gray-700">Grammar Quality Score</span>
+                            <span className="text-sm text-gray-500">
+                                {grammarResults.stats.wordsChecked} words checked
+                            </span>
+                        </div>
+                        <div className="w-full bg-gray-200 rounded-full h-3">
+                            <div 
+                                className={`h-3 rounded-full transition-all duration-500 ${getProgressColor(grammarScore)}`}
+                                style={{ width: `${grammarScore}%` }}
+                            ></div>
+                        </div>
+                    </div>
+
+                    {/* Stats Overview */}
+                    <div className="grid grid-cols-3 gap-4 mb-6">
+                        <div className="text-center p-3 bg-red-50 rounded-lg">
+                            <div className="text-2xl font-bold text-red-600">{grammarResults.stats.errors}</div>
+                            <div className="text-sm text-red-700">Errors</div>
+                        </div>
+                        <div className="text-center p-3 bg-yellow-50 rounded-lg">
+                            <div className="text-2xl font-bold text-yellow-600">{grammarResults.stats.warnings}</div>
+                            <div className="text-sm text-yellow-700">Warnings</div>
+                        </div>
+                        <div className="text-center p-3 bg-blue-50 rounded-lg">
+                            <div className="text-2xl font-bold text-blue-600">{grammarResults.stats.suggestions}</div>
+                            <div className="text-sm text-blue-700">Suggestions</div>
+                        </div>
+                    </div>
+
+                    {/* Detailed Results */}
+                    {showDetails && (
+                        <div className="space-y-4">
+                            {/* Errors */}
+                            {grammarResults.errors.length > 0 && (
+                                <div className="bg-red-50 rounded-lg p-4">
+                                    <h3 className="font-semibold text-red-800 mb-3 flex items-center gap-2">
+                                        <i className="fas fa-times-circle"></i>
+                                        Grammar Errors ({grammarResults.errors.length})
+                                    </h3>
+                                    <div className="space-y-2 max-h-40 overflow-y-auto">
+                                        {grammarResults.errors.map((error, index) => (
+                                            <div key={index} className="text-sm bg-white p-2 rounded border-l-4 border-red-400">
+                                                <div className="font-medium text-red-800">"{error.text}"</div>
+                                                <div className="text-red-700">{error.message}</div>
+                                                {error.suggestion && (
+                                                    <div className="text-green-700 mt-1">
+                                                        <i className="fas fa-arrow-right text-xs"></i> Suggestion: {error.suggestion}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Warnings */}
+                            {grammarResults.warnings.length > 0 && (
+                                <div className="bg-yellow-50 rounded-lg p-4">
+                                    <h3 className="font-semibold text-yellow-800 mb-3 flex items-center gap-2">
+                                        <i className="fas fa-exclamation-triangle"></i>
+                                        Writing Warnings ({grammarResults.warnings.length})
+                                    </h3>
+                                    <div className="space-y-2 max-h-40 overflow-y-auto">
+                                        {grammarResults.warnings.map((warning, index) => (
+                                            <div key={index} className="text-sm bg-white p-2 rounded border-l-4 border-yellow-400">
+                                                <div className="font-medium text-yellow-800">"{warning.text}"</div>
+                                                <div className="text-yellow-700">{warning.message}</div>
+                                                {warning.suggestion && (
+                                                    <div className="text-blue-700 mt-1">
+                                                        <i className="fas fa-arrow-right text-xs"></i> Tip: {warning.suggestion}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Suggestions */}
+                            {grammarResults.suggestions.length > 0 && (
+                                <div className="bg-blue-50 rounded-lg p-4">
+                                    <h3 className="font-semibold text-blue-800 mb-3 flex items-center gap-2">
+                                        <i className="fas fa-lightbulb"></i>
+                                        Writing Improvements ({grammarResults.suggestions.length})
+                                    </h3>
+                                    <div className="space-y-2 max-h-40 overflow-y-auto">
+                                        {grammarResults.suggestions.map((suggestion, index) => (
+                                            <div key={index} className="text-sm bg-white p-2 rounded border-l-4 border-blue-400">
+                                                <div className="font-medium text-blue-800">"{suggestion.text}"</div>
+                                                <div className="text-blue-700">{suggestion.message}</div>
+                                                {suggestion.suggestion && (
+                                                    <div className="text-green-700 mt-1">
+                                                        <i className="fas fa-arrow-right text-xs"></i> Consider: {suggestion.suggestion}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Perfect Grammar Message */}
+                            {grammarResults.errors.length === 0 && grammarResults.warnings.length === 0 && grammarResults.suggestions.length === 0 && (
+                                <div className="bg-green-50 rounded-lg p-4">
+                                    <h3 className="font-semibold text-green-800 mb-2 flex items-center gap-2">
+                                        <i className="fas fa-check-circle"></i>
+                                        Excellent Grammar!
+                                    </h3>
+                                    <p className="text-sm text-green-700">
+                                        No grammar errors or issues detected. Your resume content is well-written and professional.
+                                    </p>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {/* Grammar Tips */}
+                    <div className="mt-6 p-4 bg-gray-50 rounded-lg">
+                        <h4 className="font-semibold text-gray-800 mb-2 flex items-center gap-2">
+                            <i className="fas fa-pen text-gray-600"></i>
+                            Writing Tips for Resumes
+                        </h4>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-600">
+                            <div>
+                                <strong>Action Verbs:</strong> Start bullets with strong action verbs (managed, developed, implemented)
+                            </div>
+                            <div>
+                                <strong>Quantify:</strong> Include numbers and metrics where possible
+                            </div>
+                            <div>
+                                <strong>Consistency:</strong> Use parallel structure and consistent tenses
+                            </div>
+                            <div>
+                                <strong>Conciseness:</strong> Avoid redundant words and phrases
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
         function ResumeEditor () {
-            // Load data from localStorage or use defaultData
             const loadSavedData = () => {
                 try {
                     const saved = localStorage.getItem('resumeData')
@@ -1080,6 +1943,12 @@
                             </div>
                         </div>
 
+                        {/* ATS Score Analyzer */}
+                        <ATSScoreAnalyzer data={data} />
+
+                        {/* Grammar Checker */}
+                        <GrammarChecker data={data} />
+
                         <div className="space-y-8">
                             {/* Personal Information */}
                             <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-200">
@@ -1098,10 +1967,11 @@
                                     </div>
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-2">Job Title</label>
-                                        <input
+                                        <GrammarAwareInput
                                             className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
                                             value={data.jobTitle}
-                                            onChange={e => setData({ ...data, jobTitle: e.target.value })}
+                                            onChange={(value) => setData({ ...data, jobTitle: value })}
+                                            placeholder="Your professional title"
                                         />
                                     </div>
                                 </div>
