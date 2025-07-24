@@ -564,15 +564,64 @@
         }
 
         function ResumeEditor () {
-            const [data, setData] = React.useState(defaultData)
+            // Load data from localStorage or use defaultData
+            const loadSavedData = () => {
+                try {
+                    const saved = localStorage.getItem('resumeData');
+                    return saved ? JSON.parse(saved) : defaultData;
+                } catch (error) {
+                    console.warn('Error loading saved data:', error);
+                    return defaultData;
+                }
+            };
 
-            React.useEffect(() => { updateTemplate(data) }, [data])
+            const [data, setData] = React.useState(loadSavedData);
+
+            // Save data to localStorage whenever it changes
+            React.useEffect(() => {
+                try {
+                    localStorage.setItem('resumeData', JSON.stringify(data));
+                } catch (error) {
+                    console.warn('Error saving data:', error);
+                }
+            }, [data]);
+
+            React.useEffect(() => { updateTemplate(data) }, [data]);
+
+            // Reset function to restore default data
+            const resetToDefault = () => {
+                if (confirm('Are you sure you want to reset all fields to default values? This action cannot be undone.')) {
+                    setData(defaultData);
+                }
+            };
 
             return (
                 <div>
                     <div className="details-container-header">
                         <h1>Resume Fields</h1>
                         <h2 className="subtitle-for-template-name">Edit your data and see your resume update instantly</h2>
+                        <div style={{ marginTop: 10, marginBottom: 15 }}>
+                            <button 
+                                onClick={resetToDefault}
+                                style={{
+                                    background: '#dc3545',
+                                    color: '#fff',
+                                    border: 'none',
+                                    padding: '8px 16px',
+                                    borderRadius: '4px',
+                                    fontSize: '14px',
+                                    cursor: 'pointer',
+                                    marginRight: '10px'
+                                }}
+                                onMouseOver={e => e.target.style.background = '#c82333'}
+                                onMouseOut={e => e.target.style.background = '#dc3545'}
+                            >
+                                Reset to Default
+                            </button>
+                            <small style={{ color: '#666', fontStyle: 'italic' }}>
+                                Your changes are automatically saved locally
+                            </small>
+                        </div>
                     </div>
                     <div style={{ paddingTop: 25, maxWidth: '98%', fontSize: 17 }}>
                         <div>
